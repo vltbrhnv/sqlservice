@@ -13,14 +13,6 @@ from auth.schemas import UserRead, UserCreate
 from models.models import user, connection, query
 from service.schemas import ConnectionCreate
 
-# Таблица пользователей есть
-# регистрация есть
-# логин, разлогин пользователя  есть
-# endpoint получить инфу о юзере есть
-# коннекшоны пользователей юзер айди то что в сервер когда создаем есть
-# история запросов для каждого
-
-
 app = FastAPI(
     title="SQL service"
 )
@@ -90,10 +82,6 @@ async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_ses
     time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
     add_q = text(f"insert into query values('{sqlquery}', '{time_str}', {user.id} )")
     result = await session.execute(add_q)
-   # new_ = QueryCreate(queryname=sqlquery, time=time_str)
-    #stmt = insert(query).values(sqlquery, timestamp)
-    #await session.add(new_)
-    #await session.commit()
     await session.commit()
     print(result1.all())
     return {
