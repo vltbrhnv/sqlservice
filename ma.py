@@ -65,7 +65,7 @@ async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = 
     await session.commit()
     return {"status": "success"}
 
-@app.post("/query") # ДОДЕЛАТЬ НЕ РАБОТАЕТ ВЫВОД
+@app.post("/query")
 async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to access this endpoint")
@@ -77,8 +77,8 @@ async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_ses
         data.append({k: v for k, v in zip(keys, row)})
     timestamp = datetime.now()
     time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-    add_q = text(f"insert into query values('{sqlquery}', '{time_str}', {user.id} )")
-    await session.execute(add_q)
+    add_query = insert(query).values(queryname = sqlquery,time = time_str, id = user.id)
+    await session.execute(add_query)
     await session.commit()
 
     return {
@@ -93,11 +93,3 @@ async def get_user(session: AsyncSession = Depends(get_async_session), user: Use
     items = result.all()
     print(items)
     return [{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items]
-
-
-
-
-
-
-
-

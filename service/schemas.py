@@ -1,7 +1,4 @@
-
 from pydantic import BaseModel
-
-
 
 class ConnectionCreate(BaseModel):
     hostname: str
@@ -10,7 +7,3 @@ class ConnectionCreate(BaseModel):
     username: str = "postgres"
     database: str = "postgres"
     password: str
-
-class QueryCreate(BaseModel):
-    queryname: str
-    time: str
