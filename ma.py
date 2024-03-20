@@ -3,7 +3,7 @@ from datetime import datetime
 from fastapi_users import FastAPIUsers
 from fastapi import FastAPI, Depends, HTTPException
 
-from sqlalchemy import select, insert, text
+from sqlalchemy import select, insert, text, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from auth.auth import auth_backend
@@ -88,8 +88,7 @@ async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_ses
     }
 
 @app.get("/get_queries")
-async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
-    result = await session.execute(select(query).where(query.c.id == user.id))
+async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
+    result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))
     items = result.all()
-    print(items)
-    return [{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items]
+    return [{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]
