@@ -1,8 +1,8 @@
 from datetime import datetime
 
-from fastapi_users import fastapi_users, FastAPIUsers
+from fastapi_users import FastAPIUsers
+from fastapi import FastAPI, Depends, HTTPException
 
-from fastapi import FastAPI, Request, status, Depends, HTTPException
 from sqlalchemy import select, insert, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,16 +10,9 @@ from auth.auth import auth_backend
 from auth.database import User, get_async_session
 from auth.manager import get_user_manager
 from auth.schemas import UserRead, UserCreate
+
 from models.models import user, connection, query
 from service.schemas import ConnectionCreate
-
-# Таблица пользователей есть
-# регистрация есть
-# логин, разлогин пользователя  есть
-# endpoint получить инфу о юзере есть
-# коннекшоны пользователей юзер айди то что в сервер когда создаем есть
-# история запросов для каждого
-
 
 app = FastAPI(
     title="SQL service"
@@ -44,7 +37,6 @@ app.include_router(
 
 current_user = fastapi_users.current_user()
 
-
 @app.get("/protected-route")
 def protected_route(user: User = Depends(current_user)):
 
@@ -66,13 +58,6 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
     else:
         return {"email": row.email,"username:": row.username, "lastname": row.lastname, "firstname": row.firstname, "password": row.hashed_password}
 
-    """
-    query = select(user).where(user.c.id == user_id)
-    result = await session.execute(query)
-    return result.all()
-    #return result
-    """
-
 @app.post("/add_connection")
 async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session)):
     stmt = insert(connection).values(**new_connect.dict())
@@ -85,20 +70,20 @@ async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_ses
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to access this endpoint")
 
-    result1 = await session.execute(text(sqlquery))
+    result = await session.execute(text(sqlquery))
+    data = []
+    keys = result.keys()
+    for row in result.all():
+        data.append({k: v for k, v in zip(keys, row)})
     timestamp = datetime.now()
     time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
     add_q = text(f"insert into query values('{sqlquery}', '{time_str}', {user.id} )")
-    result = await session.execute(add_q)
-   # new_ = QueryCreate(queryname=sqlquery, time=time_str)
-    #stmt = insert(query).values(sqlquery, timestamp)
-    #await session.add(new_)
-    #await session.commit()
+    await session.execute(add_q)
     await session.commit()
-    print(result1.all())
+
     return {
         "status": "success",
-        "data": result1.all(),
+        "data": data,
         "details": None
     }
 
