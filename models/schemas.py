@@ -1,5 +1,4 @@
 from pydantic import BaseModel
-
 class ConnectionCreate(BaseModel):
     hostname: str
     portname: int = 5432

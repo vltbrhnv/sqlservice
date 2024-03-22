@@ -12,7 +12,7 @@ from auth.manager import get_user_manager
 from auth.schemas import UserRead, UserCreate
 
 from models.models import user, connection, query
-from service.schemas import ConnectionCreate
+from models.schemas import ConnectionCreate
 
 app = FastAPI(
     title="SQL service"
@@ -56,7 +56,11 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
     if row is None:
         return {"error": "User not found"}
     else:
-        return {"email": row.email,"username:": row.username, "lastname": row.lastname, "firstname": row.firstname, "password": row.hashed_password}
+        return {"status":"success",
+                "data": [{"email": row.email,"username:": row.username,
+                          "lastname": row.lastname, "firstname": row.firstname,
+                          "password": row.hashed_password}]
+               }
 
 @app.post("/add_connection")
 async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session)):
@@ -84,11 +88,11 @@ async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_ses
     return {
         "status": "success",
         "data": data,
-        "details": None
     }
 
 @app.get("/get_queries")
 async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
     result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))
     items = result.all()
-    return [{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]
+    return {"status":"success",
+            "data":[{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]}
