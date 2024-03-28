@@ -1,15 +1,17 @@
 from datetime import datetime
-
+import psycopg2
 from fastapi_users import FastAPIUsers
 from fastapi import FastAPI, Depends, HTTPException
 
-from sqlalchemy import select, insert, text, desc
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, insert, text, desc, create_engine, MetaData, Column, Integer, String
+from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
+from sqlalchemy.orm import DeclarativeMeta, declarative_base
 
 from auth.auth import auth_backend
 from auth.database import User, get_async_session
 from auth.manager import get_user_manager
 from auth.schemas import UserRead, UserCreate
+from config import DB_PASS, DB_HOST, DB_PORT
 
 from models.models import user, connection, query
 from models.schemas import ConnectionCreate
@@ -61,18 +63,55 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
                           "lastname": row.lastname, "firstname": row.firstname,
                           "password": row.hashed_password}]
                }
+"""@app.post("/add_connection")
+async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
 
-@app.post("/add_connection")
-async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session)):
     stmt = insert(connection).values(**new_connect.dict())
+
     await session.execute(stmt)
     await session.commit()
-    return {"status": "success"}
+    return {"status": "success",
+            "servername":new_connect.servername
+            }"""
 
+
+
+@app.post("/create_db_server/") # создание БД на отдельном сервере для юзеров
+async def create_db_server(new_connect: ConnectionCreate,session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
+
+    conn = psycopg2.connect(
+        dbname = 'websql',
+        user = 'postgres',
+        password = 'postgres',
+        host = DB_HOST,
+        port = DB_PORT
+    )
+    try:
+        conn.autocommit = True
+        cur = conn.cursor()
+        cur.execute("CREATE DATABASE " + new_connect.database)
+        conn.close()  # Закрываем соединение
+    except Exception:
+        raise HTTPException(status_code=400, detail={
+            "status": "error",
+            "details": "Такая БД уже существует"
+        })
+
+    stmt = insert(connection).values(id = user.id, hostname = DB_HOST,portname = int(DB_PORT),
+                                     servername = 'websql',username = user.username,database =new_connect.database, password = DB_PASS )
+    await session.execute(stmt)
+    await session.commit()
+    return {"status": "success",
+            "dbname": new_connect.database
+            }
 @app.post("/query")
 async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
     if not user:
-        raise HTTPException(status_code=401, detail="You need to be logged in to access this endpoint")
+        raise HTTPException(status_code=401, detail="You need to be logged in to make a query")
 
     result = await session.execute(text(sqlquery))
     data = []

@@ -41,6 +41,7 @@ employee = Table(
 connection = Table(
     "connection",
     metadata,
+    Column("id", Integer, nullable = False),
     Column("hostname", String, nullable = False),
     Column("portname", Integer, nullable = False),
     Column("servername", String, nullable = False),
