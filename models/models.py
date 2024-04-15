@@ -1,5 +1,6 @@
 from datetime import datetime
 from sqlalchemy import MetaData, Table, Column, Integer, String, TIMESTAMP, ForeignKey, Boolean
+from sqlalchemy.orm import declarative_base
 
 metadata = MetaData()
 
@@ -58,5 +59,15 @@ query = Table(
     Column("queryname", String, nullable = False),
     Column("time", String, nullable = False),
 )
+Base = declarative_base()
+class Connection(Base):
+    __tablename__ = "connections"
 
-
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer)
+    hostname = Column(String)
+    portname = Column(Integer)
+    servername = Column(String)
+    username = Column(String)
+    database = Column(String)
+    password = Column(String)
