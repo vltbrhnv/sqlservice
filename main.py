@@ -90,10 +90,11 @@ async def create_db_server(new_connect: ConnectionCreate,session: AsyncSession =
         host = DB_HOST,
         port = DB_PORT
     )
+    new_database = "_".join([new_connect.database,str(user.id)]) # костыль, если два юзера одинаково назовут бд
     try:
         conn.autocommit = True
         cur = conn.cursor()
-        cur.execute("CREATE DATABASE " + new_connect.database)
+        cur.execute("CREATE DATABASE " + new_database)
         conn.close()  # Закрываем соединение
     except Exception:
         raise HTTPException(status_code=400, detail={
