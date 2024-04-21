@@ -157,7 +157,7 @@ async def connect_to_db(dbname:str,user: User = Depends(current_user)):
         print("Ошибка при работе с PostgreSQL", error)
 
 
-@app.get("/ge_queries")
+@app.get("/get_queries")
 async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
     result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))
     items = result.all()
