@@ -18,11 +18,12 @@ from config import DB_PASS, DB_HOST, DB_PORT
 
 from models.models import user, connection, query, Connection
 from models.schemas import ConnectionCreate
-
+from routerquery import router as router
 app = FastAPI(
     title="SQL service"
 )
 
+# логика для авторизации/регистрации пользователя
 fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
     [auth_backend],
@@ -39,6 +40,7 @@ app.include_router(
     prefix="/auth",
     tags=["auth"],
 )
+#app.include_router(router)
 
 current_user = fastapi_users.current_user()
 
@@ -51,7 +53,7 @@ def protected_route(user: User = Depends(current_user)):
 def unprotected_route():
     return f"Hello, anonym"
 
-@app.get("/get_user_info/{user_id}")
+@app.get("/get_user_info/{user_id}") # получаем информацию о пользователе
 async def get_user(user_id: int, session: AsyncSession = Depends(get_async_session)):
 
     query = select(user).where(user.c.id == user_id)
@@ -63,10 +65,10 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
     else:
         return {"status":"success",
                 "data": [{"email": row.email,"username:": row.username,
-                          "lastname": row.lastname, "firstname": row.firstname,
-                          "password": row.hashed_password}]
+                          "lastname": row.lastname, "firstname": row.firstname}]
                }
-"""@app.post("/add_connection")
+
+"""@app.post("/add_connection") 
 async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
@@ -78,8 +80,9 @@ async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = 
     return {"status": "success",
             "servername":new_connect.servername
             }"""
-@app.post("/create_db_server/") # создание БД
-async def create_db_server(new_connect: ConnectionCreate,session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+@app.post("/create_db_server/") # создание БД(наверное я хз уже)
+async def create_db_server(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
 
@@ -96,6 +99,7 @@ async def create_db_server(new_connect: ConnectionCreate,session: AsyncSession =
         cur = conn.cursor()
         cur.execute("CREATE DATABASE " + new_database)
         conn.close()  # Закрываем соединение
+
     except Exception:
         raise HTTPException(status_code=400, detail={
             "status": "error",
@@ -110,35 +114,68 @@ async def create_db_server(new_connect: ConnectionCreate,session: AsyncSession =
             "dbname": new_connect.database
             }
 
-@app.post("/query")
+@app.post("/query") # написать sql запрос
 async def get_query(sqlquery: str, database: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to make a query")
+
     DB_NAME = "_".join([database,str(user.id)])
     DB_USER = "postgres"
     DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    engine_db1 = create_async_engine(DATABASE_URL)
-    async_session_maker = sessionmaker(engine_db1, class_=AsyncSession, expire_on_commit=False)
-    session_db1 = async_session_maker()
-    result =  await session_db1.execute(text(sqlquery))
-    data = []
-    keys = result.keys()
-    for row in result.all():
-        data.append({k: v for k, v in zip(keys, row)})
-    timestamp = datetime.now()
-    time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+    
+    try:
+        engine_db1 = create_async_engine(DATABASE_URL)
+        async_session_maker = sessionmaker(engine_db1, class_=AsyncSession, expire_on_commit=False)
+        session_db1 = async_session_maker()
+        if ';' in sqlquery:
+            queries = sqlquery.split(';')  # Разделение SQL-запросов по точке с запятой
+            for query in queries:
+                if query.strip():  # Пропуск пустых запросов
+                    await session_db1.execute(text(query.strip()))  # Выполнение отдельного SQL-запроса
+            await session_db1.commit()
+        else:
+            result =  await session_db1.execute(text(sqlquery))
+            await session_db1.commit()
 
-    add_query = insert(query).values(queryname = sqlquery,time = time_str, id = user.id)
-    await session.execute(add_query)
-    await session.commit()
-    return {
-        "status": "success",
-        "data": data,
-    }
-@app.post("/connect_to_db/")
+        if ('INSERT' or 'CREATE' or 'DELETE') not in sqlquery:
+            data = []
+            keys = result.keys()
+            for row in result.all():
+                data.append({k: v for k, v in zip(keys, row)})
+            timestamp = datetime.now()
+            time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+            add_query = insert(query).values(queryname = sqlquery,time = time_str, id = user.id)
+            await session.execute(add_query)
+            await session.commit()
+            return {
+                "status": "success",
+                "data": data,
+            }
+        elif 'CREATE' in sqlquery:
+            return {
+                "status": "success",
+                "message": "Таблица была успешно создана",
+            }
+        elif 'INSERT' in sqlquery:
+            return {
+                "status": "success",
+                "message": "В таблицу были успешно добавлены столбцы и строки",
+            }
+    except Exception as e:
+        return {
+            "status": "error",
+            "message": str(e),
+        }
+@app.get("/get_queries") # получение истории запросов пользователя
+async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
+    result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))
+    items = result.all()
+    return {"status":"success",
+            "data":[{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]}
+@app.post("/connect_to_db/") # подключиться к БД
 async def connect_to_db(dbname:str,user: User = Depends(current_user)):
     try:
-        new_database = "_".join(["dbapril", str(user.id)])  # костыль, если два юзера одинаково назовут бд
+        new_database = "_".join([dbname, str(user.id)])  # костыль, если два юзера одинаково назовут бд
         # Подключение к существующей базе данных
         connection_db = psycopg2.connect(user="postgres",
                                       password="postgres",
@@ -147,8 +184,6 @@ async def connect_to_db(dbname:str,user: User = Depends(current_user)):
                                       database=new_database)
         # Курсор для выполнения операций с базой данных
         cursor = connection_db.cursor()
-        print("Информация о сервере PostgreSQL")
-        print(connection_db.get_dsn_parameters(), "\n")
         cursor.execute("SELECT version();")
         record = cursor.fetchone()
         print("Вы подключены к - ", record, "\n")
@@ -156,10 +191,9 @@ async def connect_to_db(dbname:str,user: User = Depends(current_user)):
     except (Exception, Error) as error:
         print("Ошибка при работе с PostgreSQL", error)
 
-
-@app.get("/get_queries")
-async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
-    result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))
-    items = result.all()
-    return {"status":"success",
-            "data":[{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]}
+"""
+добавить бы роутеры
+sql инъенкции
+эндпоинт для вывода всех таблиц пользователя
+эндпоинт для вывода всех столбцов 
+"""
