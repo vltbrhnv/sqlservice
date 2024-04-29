@@ -12,13 +12,9 @@ from auth.manager import get_user_manager
 from config import DB_PASS, DB_HOST, DB_PORT
 from models.models import query
 
+router = APIRouter()
 """
-routerquery = APIRouter(
-    prefix="/queries",
-    tags=["Query"]
-)
-
-@routerquery.post("/query") # написать sql запрос
+@router.post("/query") # написать sql запрос
 async def get_query(sqlquery: str, database: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to make a query")
@@ -46,7 +42,7 @@ async def get_query(sqlquery: str, database: str, session: AsyncSession = Depend
         "status": "success",
         "data": data,
     }
-@routerquery.get("/get_queries") # получение истории запросов пользователя
+@router.get("/get_queries") # получение истории запросов пользователя
 async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
     from sqlalchemy import select
     result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))

@@ -14,10 +14,11 @@ from auth.auth import auth_backend
 from auth.database import User, get_async_session, Base
 from auth.manager import get_user_manager
 from auth.schemas import UserRead, UserCreate
-from config import DB_PASS, DB_HOST, DB_PORT
+from config import DB_PASS, DB_HOST, DB_PORT, DB_USER
 
 from models.models import user, connection, query
 from models.schemas import ConnectionCreate
+#from routerquery import router
 
 app = FastAPI(
     title="SQL service"
@@ -43,6 +44,7 @@ app.include_router(
 
 current_user = fastapi_users.current_user()
 
+#app.include_router(router)
 @app.get("/protected-route")
 def protected_route(user: User = Depends(current_user)):
     return f"Hello, {user.username}"
@@ -57,18 +59,15 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
     query = select(user).where(user.c.id == user_id)
     result = await session.execute(query)
     row = result.fetchone()
-
     if row is None:
         return {"error": "User not found"}
-    else:
-        return {"status":"success",
-                "data": [{"email": row.email,"username:": row.username,
-                          "lastname": row.lastname, "firstname": row.firstname}]
-               }
+    return {"status":"success",
+            "data": [{"email": row.email,"username:": row.username,
+                      "lastname": row.lastname, "firstname": row.firstname}]
+           }
 
 @app.post("/create_db_server/") # создание БД(наверное)
 async def create_db_server(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
-
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
 
@@ -80,6 +79,7 @@ async def create_db_server(new_connect: ConnectionCreate, session: AsyncSession 
         port = DB_PORT
     )
     new_database = "_".join([new_connect.database,str(user.id)]) # костыль, если два юзера одинаково назовут бд
+
     try:
         conn.autocommit = True
         cur = conn.cursor()
@@ -99,68 +99,8 @@ async def create_db_server(new_connect: ConnectionCreate, session: AsyncSession 
     return {"status": "success",
             "dbname": new_connect.database
             }
-
-@app.post("/query") # написать sql запрос
-async def get_query(sqlquery: str, database: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
-    if not user:
-        raise HTTPException(status_code=401, detail="You need to be logged in to make a query")
-
-    DB_NAME = "_".join([database,str(user.id)])
-    DB_USER = "postgres"
-    DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-
-    try:
-        engine_db1 = create_async_engine(DATABASE_URL)
-        async_session_maker = sessionmaker(engine_db1, class_=AsyncSession, expire_on_commit=False)
-        session_db1 = async_session_maker()
-        if ';' in sqlquery:
-            queries = sqlquery.split(';')  # Разделение SQL-запросов по точке с запятой
-            for query in queries:
-                if query.strip():  # Пропуск пустых запросов
-                    await session_db1.execute(text(query.strip()))  # Выполнение отдельного SQL-запроса
-            await session_db1.commit()
-        else:
-            result =  await session_db1.execute(text(sqlquery))
-            await session_db1.commit()
-
-        if ('INSERT' or 'CREATE' or 'DELETE') not in sqlquery:
-            data = []
-            keys = result.keys()
-            for row in result.all():
-                data.append({k: v for k, v in zip(keys, row)})
-            timestamp = datetime.now()
-            time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
-            add_query = insert(query).values(queryname = sqlquery,time = time_str, id = user.id)
-            await session.execute(add_query)
-            await session.commit()
-            return {
-                "status": "success",
-                "data": data,
-            }
-        elif 'CREATE' in sqlquery:
-            return {
-                "status": "success",
-                "message": "Таблица была успешно создана",
-            }
-        elif 'INSERT' in sqlquery:
-            return {
-                "status": "success",
-                "message": "В таблицу были успешно добавлены столбцы и строки",
-            }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e),
-        }
-@app.get("/get_queries") # получение истории запросов пользователя
-async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
-    result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))
-    items = result.all()
-    return {"status":"success",
-            "data":[{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]}
-
 @app.post("/connect_to_db/") # подключиться к БД
-async def connect_to_db(dbname:str, user: User = Depends(current_user)):
+async def connect_to_db(dbname: str, user: User = Depends(current_user)):
     try:
         new_database = "_".join([dbname, str(user.id)])  # костыль, если два юзера одинаково назовут бд
         # Подключение к существующей базе данных
@@ -173,7 +113,106 @@ async def connect_to_db(dbname:str, user: User = Depends(current_user)):
         cursor = connection_db.cursor()
         cursor.execute("SELECT version();")
         record = cursor.fetchone()
-        print("Вы подключены к - ", record, "\n")
+        print(record)
+        return {"status": "success",
+                "data": "Вы подключены к базе данных"}
 
-    except (Exception, Error) as error:
-        print("Ошибка при работе с PostgreSQL", error)
+    except Exception:
+        raise HTTPException(status_code=489, detail={
+            "status": "error",
+            "data": "Такой базы данных не существует",
+        })
+
+
+@app.post("/query") # написать sql запрос
+async def get_query(sqlquery: str, database: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+    if not user:
+        raise HTTPException(status_code=401, detail="You need to be logged in to make a query")
+
+    DB_NAME = "_".join([database,str(user.id)])
+    DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+
+    try:
+        engine_db1 = create_async_engine(DATABASE_URL)
+        async_session_maker = sessionmaker(engine_db1, class_=AsyncSession, expire_on_commit=False)
+        session_db1 = async_session_maker()
+
+        if sqlquery.count(';') <= 1:
+            result = await session_db1.execute(text(sqlquery))
+            await session_db1.commit()
+            if 'CREATE' in sqlquery:
+                try:
+                    return {
+                        "status": "success",
+                        "data": "Таблица была успешна создана"
+                    }
+                except Exception as e:
+                    return{
+                        "status": "error",
+                        "data": str(e)
+                    }
+            elif 'INSERT' in sqlquery:
+                print('*')
+                try:
+                    return {
+                        "status": "success",
+                        "data": "В таблицу были успешно добавлены столбцы"
+                    }
+                except Exception as e:
+                    return{
+                        "status": "error",
+                        "data": str(e)
+                    }
+            elif 'DELETE' in sqlquery:
+                print('*')
+                try:
+                    return {
+                        "status": "success",
+                        "data": "Столбцы были успешно удалены"
+                    }
+                except Exception as e:
+                    return{
+                        "status": "error",
+                        "data": str(e)
+                    }
+            else:
+
+                data = []
+                keys = result.keys()
+                for row in result.all():
+                    data.append({k: v for k, v in zip(keys, row)})
+                return {
+                    "status": "success",
+                    "data": data,
+                }
+        else:
+            queries = sqlquery.split(';')  # Разделение SQL-запросов по точке с запятой
+            for query in queries:
+                if query.strip():  # Пропуск пустых запросов
+                    await session_db1.execute(text(query.strip()))  # Выполнение отдельного SQL-запроса
+
+            await session_db1.commit()
+            return{
+                "status": "success",
+                "data": "Запросы успешно выполнены"
+            }
+        timestamp = datetime.now()
+        time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
+        add_query = insert(query).values(queryname=sqlquery, time=time_str, id=user.id)
+        await session.execute(add_query)
+        await session.commit()
+
+    except Exception as e:
+        return {
+            "status": "error",
+            "data": str(e),
+        }
+
+@app.get("/get_queries") # получение истории запросов пользователя
+async def get_user(session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user),limit:int = 15):
+    result = await session.execute(select(query).where(query.c.id == user.id).order_by(desc(query.c.time)))
+    items = result.all()
+    return {"status":"success",
+            "data":[{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]}
+
+
