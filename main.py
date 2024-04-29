@@ -16,9 +16,9 @@ from auth.manager import get_user_manager
 from auth.schemas import UserRead, UserCreate
 from config import DB_PASS, DB_HOST, DB_PORT
 
-from models.models import user, connection, query, Connection
+from models.models import user, connection, query
 from models.schemas import ConnectionCreate
-from routerquery import router as router
+
 app = FastAPI(
     title="SQL service"
 )
@@ -40,13 +40,11 @@ app.include_router(
     prefix="/auth",
     tags=["auth"],
 )
-#app.include_router(router)
 
 current_user = fastapi_users.current_user()
 
 @app.get("/protected-route")
 def protected_route(user: User = Depends(current_user)):
-
     return f"Hello, {user.username}"
 
 @app.get("/unprotected-route")
@@ -68,19 +66,7 @@ async def get_user(user_id: int, session: AsyncSession = Depends(get_async_sessi
                           "lastname": row.lastname, "firstname": row.firstname}]
                }
 
-"""@app.post("/add_connection") 
-async def add_connection(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
-    if not user:
-        raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
-
-    stmt = insert(connection).values(**new_connect.dict())
-
-    await session.execute(stmt)
-    await session.commit()
-    return {"status": "success",
-            "servername":new_connect.servername
-            }"""
-@app.post("/create_db_server/") # создание БД(наверное я хз уже)
+@app.post("/create_db_server/") # создание БД(наверное)
 async def create_db_server(new_connect: ConnectionCreate, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
 
     if not user:
@@ -122,7 +108,7 @@ async def get_query(sqlquery: str, database: str, session: AsyncSession = Depend
     DB_NAME = "_".join([database,str(user.id)])
     DB_USER = "postgres"
     DATABASE_URL = f"postgresql+asyncpg://{DB_USER}:{DB_PASS}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
-    
+
     try:
         engine_db1 = create_async_engine(DATABASE_URL)
         async_session_maker = sessionmaker(engine_db1, class_=AsyncSession, expire_on_commit=False)
@@ -172,8 +158,9 @@ async def get_user(session: AsyncSession = Depends(get_async_session), user: Use
     items = result.all()
     return {"status":"success",
             "data":[{"queryname": row.queryname ,"time": row.time, "id":row.id} for row in items][0:][:limit]}
+
 @app.post("/connect_to_db/") # подключиться к БД
-async def connect_to_db(dbname:str,user: User = Depends(current_user)):
+async def connect_to_db(dbname:str, user: User = Depends(current_user)):
     try:
         new_database = "_".join([dbname, str(user.id)])  # костыль, если два юзера одинаково назовут бд
         # Подключение к существующей базе данных
@@ -190,10 +177,3 @@ async def connect_to_db(dbname:str,user: User = Depends(current_user)):
 
     except (Exception, Error) as error:
         print("Ошибка при работе с PostgreSQL", error)
-
-"""
-добавить бы роутеры
-sql инъенкции
-эндпоинт для вывода всех таблиц пользователя
-эндпоинт для вывода всех столбцов 
-"""

@@ -49,7 +49,6 @@ connection = Table(
     Column("username", String, default="postgres", nullable = False),
     Column("database", String, default="postgres", nullable = False),
     Column("password", String, nullable = False),
-
 )
 
 query = Table(
@@ -60,9 +59,8 @@ query = Table(
     Column("time", String, nullable = False),
 )
 Base = declarative_base()
-class Connection(Base):
+"""class Connection(Base):
     __tablename__ = "connections"
-
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer)
     hostname = Column(String)
@@ -70,4 +68,4 @@ class Connection(Base):
     servername = Column(String)
     username = Column(String)
     database = Column(String)
-    password = Column(String)
+    password = Column(String)"""

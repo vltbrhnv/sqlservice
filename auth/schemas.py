@@ -16,7 +16,6 @@ class UserRead(schemas.BaseUser[int]):
     class Config:
         from_attributes = True
 
-
 class UserCreate(schemas.BaseUserCreate):
     username: str
     lastname: str

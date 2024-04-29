@@ -12,11 +12,7 @@ from auth.manager import get_user_manager
 from config import DB_PASS, DB_HOST, DB_PORT
 from models.models import query
 
-"""fastapi_users = FastAPIUsers[User, int](
-    get_user_manager,
-    [auth_backend],
-)
-current_user = fastapi_users.current_user()
+"""
 routerquery = APIRouter(
     prefix="/queries",
     tags=["Query"]
