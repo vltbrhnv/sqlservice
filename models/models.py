@@ -19,36 +19,11 @@ user = Table(
     Column("is_verified", Boolean, default=False, nullable=False)
 )
 
-job = Table(
-    "job",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("title", String, nullable=False),
-    Column("min_salary", Integer, nullable=False),
-    Column("max_salary", Integer, nullable=False),
-)
-
-employee = Table(
-    "employee",
-    metadata,
-    Column("id", Integer, primary_key=True),
-    Column("email", String, nullable=False),
-    Column("name", String, nullable=False),
-    Column("phone_number", Integer, nullable=False),
-    Column("salary", Integer, nullable=False),
-    Column("job_id", Integer, ForeignKey("job.id"))
-)
-
 connection = Table(
     "connection",
     metadata,
     Column("id", Integer, nullable = False),
-    Column("hostname", String, nullable = False),
-    Column("portname", Integer, nullable = False),
-    Column("servername", String, nullable = False),
-    Column("username", String, default="postgres", nullable = False),
-    Column("database", String, default="postgres", nullable = False),
-    Column("password", String, nullable = False),
+    Column("database", String, nullable = False),
 )
 
 query = Table(
@@ -59,13 +34,4 @@ query = Table(
     Column("time", String, nullable = False),
 )
 Base = declarative_base()
-"""class Connection(Base):
-    __tablename__ = "connections"
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer)
-    hostname = Column(String)
-    portname = Column(Integer)
-    servername = Column(String)
-    username = Column(String)
-    database = Column(String)
-    password = Column(String)"""
+

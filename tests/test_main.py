@@ -1,2 +1,2 @@
-"""def test_main():
-    assert 2 ==  2"""
+def test_main():
+    assert 2 ==  2
