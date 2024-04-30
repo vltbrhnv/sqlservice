@@ -1,9 +1,8 @@
-
 from fastapi_users import FastAPIUsers
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI
 
 from auth.auth import auth_backend
-from auth.database import User, get_async_session, Base
+from auth.database import User
 from auth.manager import get_user_manager
 from auth.schemas import UserRead, UserCreate
 

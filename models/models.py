@@ -1,5 +1,5 @@
 from datetime import datetime
-from sqlalchemy import MetaData, Table, Column, Integer, String, TIMESTAMP, ForeignKey, Boolean
+from sqlalchemy import MetaData, Table, Column, Integer, String, TIMESTAMP, Boolean
 from sqlalchemy.orm import declarative_base
 
 metadata = MetaData()
