@@ -6,26 +6,20 @@ from sqlalchemy import text, insert, desc, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-from auth.auth import auth_backend
-from auth.database import get_async_session, User
-from auth.manager import get_user_manager
-from config import DB_PASS, DB_HOST, DB_PORT, DB_USER
+from src.auth.auth import auth_backend, current_user
+from src.auth.models import User
+from src.database import get_async_session
+from src.auth.manager import get_user_manager
+from src.config import DB_PASS, DB_HOST, DB_PORT, DB_USER
 
-from models.models import query
+from src.models.models import query
 
-from routers.router_database import database_connection
+from src.routers.router_database import database_connection
 
 router = APIRouter(
     prefix="/query",
     tags=["query"],
 )
-
-fastapi_users = FastAPIUsers[User, int](
-    get_user_manager,
-    [auth_backend],
-)
-
-current_user = fastapi_users.current_user()
 
 @router.post("/query") # написать sql запрос
 async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):

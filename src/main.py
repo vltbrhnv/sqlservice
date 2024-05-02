@@ -1,14 +1,14 @@
 from fastapi_users import FastAPIUsers
 from fastapi import FastAPI
 
-from auth.auth import auth_backend
-from auth.database import User
-from auth.manager import get_user_manager
-from auth.schemas import UserRead, UserCreate
+from src.auth.auth import auth_backend
+from src.auth.manager import get_user_manager
+from src.auth.models import User
+from src.auth.schemas import UserRead, UserCreate
 
-from routers.router_query import router as router_q
-from routers.router_database import router as router_database
-from routers.router_user import router as router_user
+from src.routers.router_query import router as router_q
+from src.routers.router_database import router as router_database
+from src.routers.router_user import router as router_user
 
 app = FastAPI(
     title="SQL service"
