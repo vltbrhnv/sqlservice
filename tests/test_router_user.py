@@ -1,8 +1,6 @@
-import pytest
+from tests.conftest import client
 
-"""@pytest.fixture(scope="session", autouse=True)
-def setup_db():
-    print(f"{settings.DB_NAME=}")
-    assert settings.MODE == "TEST"
-    Base.metadata.drop_all(engine)
-    Base.metadata.create_all(engine)"""
+
+# def test_get_user():
+#     response = client.get("/get_user_info/1")
+#     assert response.json() == {"status": "success"}

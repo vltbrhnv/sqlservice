@@ -30,9 +30,11 @@ app.dependency_overrides[get_async_session] = override_get_async_session
 async def prepare_database():
     async with engine_test.begin() as conn:
         await conn.run_sync(metadata.create_all)
+        print("created")
     yield
     async with engine_test.begin() as conn:
         await conn.run_sync(metadata.drop_all)
+
 
 # SETUP
 @pytest.fixture(scope='session')

@@ -9,7 +9,7 @@ from src.auth.models import User
 from src.database import get_async_session
 from src.auth.manager import get_user_manager
 
-from src.config import DB_HOST, DB_PORT
+from src.config import DB_HOST, DB_PORT, DB_PASS, DB_USER
 from src.models.models import connection
 import psycopg2
 
@@ -28,15 +28,15 @@ class DatabaseConnection:
 
 database_connection = DatabaseConnection()
 
-@router.post("/create_db_server/{new_connect.database}") # создание БД(наверное)
+@router.post("/create_db_server") # создание БД(наверное)
 async def create_db_server(new_database: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
 
     conn = psycopg2.connect(
         dbname = 'websql',
-        user = 'postgres',
-        password = 'postgres',
+        user = DB_USER,
+        password = DB_PASS,
         host = DB_HOST,
         port = DB_PORT
     )

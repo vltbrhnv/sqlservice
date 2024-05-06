@@ -48,7 +48,6 @@ async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_ses
                 if 'DELETE' in sqlquery:
                     details.append("Из таблицы были успешно удалены столбцы(столбец)")
                 else:
-
                     keys = result.keys()
                     for row in result.all():
                         data.append({k: v for k, v in zip(keys, row)})

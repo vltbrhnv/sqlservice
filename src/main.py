@@ -13,7 +13,6 @@ from src.routers.router_user import router as router_user
 app = FastAPI(
     title="SQL service"
 )
-
 # логика для авторизации/регистрации пользователя
 fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
