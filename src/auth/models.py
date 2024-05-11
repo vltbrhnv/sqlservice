@@ -20,7 +20,6 @@ user = Table(
     Column("is_verified", Boolean, default=False, nullable=False),
 )
 
-
 class User(SQLAlchemyBaseUserTable[int], Base):
     id = Column(Integer, primary_key=True)
     email = Column(String, nullable=False)

@@ -6,12 +6,12 @@ from fastapi_users import (BaseUserManager, IntegerIDMixin, exceptions, models,
 
 from src.auth.models import User
 from src.auth.utils import get_user_db
-from src.config import SECRET_AUTH
+from src.config import JWT_SECRET
 
 
 class UserManager(IntegerIDMixin, BaseUserManager[User, int]):
-    reset_password_token_secret = SECRET_AUTH
-    verification_token_secret = SECRET_AUTH
+    reset_password_token_secret = JWT_SECRET
+    verification_token_secret = JWT_SECRET
 
     async def on_after_register(self, user: User, request: Optional[Request] = None):
         print(f"User {user.id} has registered.")

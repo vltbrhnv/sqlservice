@@ -1,15 +1,17 @@
-from fastapi import APIRouter, HTTPException, Depends
+from typing import Annotated
+
+from fastapi import APIRouter, HTTPException, Depends, Header
 from fastapi_users import FastAPIUsers
 
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.auth.auth import auth_backend, current_user
+from src.auth.auth import auth_backend, get_current_user
 from src.auth.models import User
 from src.database import get_async_session
 from src.auth.manager import get_user_manager
 
-from src.config import DB_HOST, DB_PORT, DB_PASS, DB_USER
+from src.config import DB_HOST, DB_PORT, DB_PASS, DB_USER, DB_NAME
 from src.models.models import connection
 import psycopg2
 
@@ -29,19 +31,20 @@ class DatabaseConnection:
 database_connection = DatabaseConnection()
 
 @router.post("/create_db_server") # создание БД(наверное)
-async def create_db_server(new_database: str, session: AsyncSession = Depends(get_async_session), user: User = Depends(current_user)):
+async def create_db_server(new_database: str, session: AsyncSession = Depends(get_async_session),
+                           user: int = Depends(get_current_user), token: Annotated[str, Header()]=None):
     if not user:
         raise HTTPException(status_code=401, detail="You need to be logged in to create a server")
 
     conn = psycopg2.connect(
-        dbname = 'websql',
+        dbname = DB_NAME,
         user = DB_USER,
         password = DB_PASS,
         host = DB_HOST,
         port = DB_PORT
     )
 
-    new_database_concat = "_".join([new_database, str(user.id)]) # костыль, если два юзера одинаково назовут бд
+    new_database_concat = "_".join([new_database, str(user)]) # костыль, если два юзера одинаково назовут бд
 
     try:
         conn.autocommit = True
@@ -55,7 +58,7 @@ async def create_db_server(new_database: str, session: AsyncSession = Depends(ge
             "details": "Такая БД уже существует"
         })
 
-    stmt = insert(connection).values(id = user.id, database =new_database_concat)
+    stmt = insert(connection).values(id = user, database =new_database_concat)
     await session.execute(stmt)
     await session.commit()
     return {"status": "success",
@@ -63,9 +66,10 @@ async def create_db_server(new_database: str, session: AsyncSession = Depends(ge
             }
 
 @router.post("/connect_to_db/")
-async def connect_to_db(dbname: str, user: User = Depends(current_user)):
+async def connect_to_db(dbname: str, user: int = Depends(get_current_user),
+                        token: Annotated[str, Header()]=None):
     try:
-        database_connection.connect(dbname, user.id)
+        database_connection.connect(dbname, user)
         return {"status": "success",
                 "details": "Вы подключены к базе данных " + database_connection.connection}
     except Exception:

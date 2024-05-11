@@ -1,16 +1,19 @@
 import asyncio
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Annotated
 
+import jwt
 import pytest
+from fastapi import Header
 from fastapi.testclient import TestClient
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import NullPool
 
+from src.auth.auth import get_current_user
 from src.database import get_async_session, metadata
 from src.config import (DB_HOST_TEST, DB_NAME_TEST, DB_PASS_TEST, DB_PORT_TEST,
-                        DB_USER_TEST)
+                        DB_USER_TEST, SECRET_AUTH)
 from src.main import app
 
 # DATABASE
@@ -22,19 +25,24 @@ metadata.bind = engine_test
 
 async def override_get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
+        print('session')
         yield session
 
+async def override_get_current_user(token: Annotated[str, Header()]):
+    payload = jwt.decode(token, SECRET_AUTH, algorithms="HS256", audience=["fastapi-users:auth"])
+    print('current_user')
+    return int(payload.get("sub"))
+
 app.dependency_overrides[get_async_session] = override_get_async_session
+app.dependency_overrides[get_current_user] = override_get_current_user
 
 @pytest.fixture(autouse=True, scope='session')
 async def prepare_database():
     async with engine_test.begin() as conn:
-        await conn.run_sync(metadata.create_all)
-        print("created")
-    yield
-    async with engine_test.begin() as conn:
         await conn.run_sync(metadata.drop_all)
-
+    async with engine_test.begin() as conn:
+        await conn.run_sync(metadata.create_all)
+    yield
 
 # SETUP
 @pytest.fixture(scope='session')
@@ -44,7 +52,7 @@ def event_loop(request):
     yield loop
     loop.close()
 
-client = TestClient(app)
+client = TestClient(app=app)
 
 @pytest.fixture(scope="session")
 async def ac() -> AsyncGenerator[AsyncClient, None]:
