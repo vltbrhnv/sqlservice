@@ -6,14 +6,14 @@ from src.auth.manager import get_user_manager
 from src.auth.models import User
 from src.auth.schemas import UserRead, UserCreate
 
-# from src.routers.router_query import router as router_q
+from src.routers.router_query import router as router_query
 from src.routers.router_database import router as router_database
 from src.routers.router_user import router as router_user
 
 app = FastAPI(
     title="SQL service"
 )
-# логика для авторизации/регистрации пользователя
+
 fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
     [auth_backend],
@@ -31,9 +31,7 @@ app.include_router(
     tags=["auth"],
 )
 
-current_user = fastapi_users.current_user()
-
-# app.include_router(router_q)
+app.include_router(router_query)
 app.include_router(router_database)
 app.include_router(router_user)
 

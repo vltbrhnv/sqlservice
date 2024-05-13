@@ -24,12 +24,14 @@ async def test_login(ac: AsyncClient):
     assert response_bad_password.json()["detail"] == "LOGIN_BAD_CREDENTIALS"
     assert response_bad_data.status_code == 422
 
-# async def test_logout(ac: AsyncClient):
-#     login_response = await ac.post("/auth/jwt/login", data = {"username":"testing@mail.ru", "password": "parol"})
-#     token = login_response.json()['access_token']
-#     print(f'LOGOUTTEST_{token}')
-#     response = await ac.post("/auth/jwt/logout", headers={"Authorization": f"Bearer {token}"})
-#     assert response.status_code == 204
-
+async def test_logout(ac: AsyncClient):
+    login_response = await ac.post("/auth/jwt/login", data = {"username":"testing@mail.ru", "password": "parol"})
+    token = login_response.json()['access_token']
+    response = await ac.post("/auth/jwt/logout", headers={"Authorization": f"Bearer {token}"})
+    assert response.status_code == 204
+    token_bad = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2IiwiYXVkIjpbImZhc3RhcGktdXNlcnM6YXV0aCJdLCJleHAiOjE3MTU2MzUwMTZ9.4Dz3IrOcH3f5sGO5W43vdZt2bbyZpzeOMukuygMZtpu"
+    response_bad = await ac.post("/auth/jwt/logout", headers={"Authorization": f"Bearer {token_bad}"})
+    assert response_bad.status_code == 401
+    assert response_bad.json()["detail"] == 'Invalid token'
 
 

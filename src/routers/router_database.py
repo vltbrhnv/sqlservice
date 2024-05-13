@@ -1,15 +1,12 @@
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends, Header
-from fastapi_users import FastAPIUsers
 
 from sqlalchemy import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from src.auth.auth import auth_backend, get_current_user
-from src.auth.models import User
+from src.auth.auth import get_current_user
 from src.database import get_async_session
-from src.auth.manager import get_user_manager
 
 from src.config import DB_HOST, DB_PORT, DB_PASS, DB_USER, DB_NAME
 from src.models.models import connection
@@ -19,16 +16,18 @@ router = APIRouter(
     prefix="/database",
     tags=["database"],
 )
-
 class DatabaseConnection:
-    def __init__(self):
-        self.connection = None
+    def __init__(self, database: str):
+        self.database = database
 
-    def connect(self, dbname: str, user_id: int):
-        new_database = f"{dbname}_{user_id}"
-        self.connection = new_database
+    def get_database_name(self):
+        return self.database
+    def set_age(self, a):
+        self.database = a
 
-database_connection = DatabaseConnection()
+
+
+database_name  = DatabaseConnection("default")
 
 @router.post("/create_db_server") # создание БД(наверное)
 async def create_db_server(new_database: str, session: AsyncSession = Depends(get_async_session),
@@ -68,10 +67,20 @@ async def create_db_server(new_database: str, session: AsyncSession = Depends(ge
 @router.post("/connect_to_db/")
 async def connect_to_db(dbname: str, user: int = Depends(get_current_user),
                         token: Annotated[str, Header()]=None):
+    database = "_".join([dbname, str(user)])  # костыль, если два юзера одинаково назовут бд
     try:
-        database_connection.connect(dbname, user)
+        # Подключение к существующей базе данных
+        connection = psycopg2.connect(
+            dbname=database,
+            user=DB_USER,
+            password=DB_PASS,
+            host=DB_HOST,
+            port=DB_PORT
+        )
+        database_name.set_age(database)
         return {"status": "success",
-                "details": "Вы подключены к базе данных " + database_connection.connection}
+                "details": "Вы подключены к базе данных " + dbname}
+
     except Exception:
         raise HTTPException(status_code=489, detail={
             "status": "error",

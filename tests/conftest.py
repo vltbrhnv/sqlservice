@@ -25,12 +25,10 @@ metadata.bind = engine_test
 
 async def override_get_async_session() -> AsyncGenerator[AsyncSession, None]:
     async with async_session_maker() as session:
-        print('session')
         yield session
 
 async def override_get_current_user(token: Annotated[str, Header()]):
     payload = jwt.decode(token, SECRET_AUTH, algorithms="HS256", audience=["fastapi-users:auth"])
-    print('current_user')
     return int(payload.get("sub"))
 
 app.dependency_overrides[get_async_session] = override_get_async_session
@@ -43,6 +41,7 @@ async def prepare_database():
     async with engine_test.begin() as conn:
         await conn.run_sync(metadata.create_all)
     yield
+
 
 # SETUP
 @pytest.fixture(scope='session')

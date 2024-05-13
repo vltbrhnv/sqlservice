@@ -13,7 +13,7 @@ router = APIRouter(
     tags=["user"],
 )
 
-@router.get("/get_user_info/")
+@router.get("/get_user_info/{my_user}")
 async def get_user(token: Annotated[str, Header()]=None,
                    session: AsyncSession = Depends(get_async_session), my_user: int = Depends(get_current_user)):
     stmt = select(user).where(user.c.id == my_user)
