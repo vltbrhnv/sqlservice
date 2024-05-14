@@ -53,6 +53,8 @@ async def get_query(sqlquery: str, session: AsyncSession = Depends(get_async_ses
                     keys = result.keys()
                     for row in result.all():
                         data.append({k: v for k, v in zip(keys, row)})
+                else:
+                    data.append("Операция успешно выполнена")
         await session_db.commit()
         add_query = insert(query).values(queryname=sqlquery, time=time_str, id=user)
         await session.execute(add_query)
